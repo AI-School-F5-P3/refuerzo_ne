@@ -1,3 +1,19 @@
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+import numpy as np
+
+import os
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+
+from config_ruta import ruta_datos 
+from load import cargar_datos
+
+df=cargar_datos(ruta_datos)
+
+
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
@@ -63,8 +79,36 @@ def dividir_datos(ruta):
     return None, None
 
 
+
+    
+
+df=cargar_datos(ruta_datos)
+
+
+df['age_employ_ratio'] = df['age'] / (df['employ'] + 1)
+#df['income_tenure_score'] = df['income'] * df['tenure']
+df=df.drop(columns=['employ','age','income'])
+# Transformaciones
+from sklearn.preprocessing import StandardScaler
+
+df = pd.get_dummies(df, columns=['gender', 'marital'], drop_first=True
+                    )
+
+
+# Escalar variables numéricas importantes
+scaler = StandardScaler()
+features_to_scale = ['tenure','age_employ_ratio']
+#features_to_scale = ['tenure','income_tenure_score','age_employ_ratio']
+df[features_to_scale] = scaler.fit_transform(df[features_to_scale])
+
+
+from sklearn.feature_selection import SelectKBest, f_classif
 # Dividir los datos
-X, Y = dividir_datos(ruta_datos)
+# Separar la variable dependiente (Y) y las independientes (X)
+X = df.drop(columns=['custcat'])  # Eliminar la columna objetivo
+Y = df['custcat']  # Seleccionar la columna objetivo
+print("Datos divididos exitosamente.")
+
 
 if X is not None and Y is not None:
     print("Variables independientes (X):")
@@ -73,55 +117,48 @@ if X is not None and Y is not None:
     print(Y.head())
 else:
     print("No se pudieron dividir los datos.")
-    
+# Seleccionar las mejores características
+selector = SelectKBest(score_func=f_classif, k=8)
+X_new = selector.fit_transform(X, Y)
+selected_features = X.columns[selector.get_support()]
+print(selected_features)
+
+# One-Hot Encoding para variables categóricas relevantes
+
+
+print(X_new) 
+ # 1. Dividir los datos en train y test (80% entrenamiento, 20% prueba)
+X_train, X_test, Y_train, Y_test = train_test_split(X_new, Y, test_size=0.2, random_state=42)
+
+# 2. Inicializar el modelo de RandomForestClassifier
+modelo = RandomForestClassifier(random_state=42)
+
+# 3. Entrenar el modelo con el conjunto de entrenamiento
+modelo.fit(X_train, Y_train)
+
+# 4. Predecir los valores en el conjunto de prueba
+Y_pred = modelo.predict(X_test)
+
+# 5. Calcular la precisión del modelo en el conjunto de prueba
+precision = accuracy_score(Y_test, Y_pred)
+print(f"Precisión en el conjunto de prueba: {precision:.4f}")
+
+# 6. Realizar validación cruzada con 5 particiones
+# Esto realiza validación cruzada sobre el conjunto de entrenamiento para obtener una medida más robusta del rendimiento del modelo
+cv_scores = cross_val_score(modelo, X_train, Y_train, cv=5)
+
+# Mostrar los resultados de la validación cruzada
+print(f"Precisión promedio en validación cruzada: {cv_scores.mean():.4f}")
+print(f"Desviación estándar de la validación cruzada: {cv_scores.std():.4f}")
 
 
 
-
-
-
-# Paso 1: Identificar las variables continuas
-# Asumimos que todas las variables numéricas son continuas (esto puede cambiar según el contexto)
-
-#X_categoricas=['region', 'marital','address','retire', 'gender','reside' ]
-var_ord=['ed']
-
-# Paso 1: Variables categóricas
-variables_categoricas = ['region', 'marital', 'address', 'retire', 'gender', 'reside']
-X['region'] = X['region'].astype('category')
-X['marital'] = X['marital'].astype('category')
-#X['address'] = X['address'].astype('category') #Y si calculo frecuencia para este
-X['retire'] = X['retire'].astype('category')
-X['gender'] = X['gender'].astype('category')
-X['reside'] = X['reside'].astype('category')
-
-print(X[variables_categoricas])
-# Paso 2: Aplicar get_dummies() a las variables categóricas
-X_categoricas = pd.get_dummies(X[variables_categoricas], drop_first=True)  # drop_first=True evita la multicolinealidad
-print(f'Con get_dummies:\n{X_categoricas}')
-
-
-
-
-# Paso 3: Concatenar las variables categóricas codificadas con el resto de las variables
-X_restantes = X.drop(columns=variables_categoricas)  # Quitamos las columnas categóricas originales
-X_final = pd.concat([X_restantes, X_categoricas], axis=1)  # Concatenamos las columnas transformadas
-
-# Paso 4: Escalar las variables continuas
-variables_continuas = ['tenure', 'age', 'income','employ'] # Asegúrate de identificar correctamente las variables continuas
-scaler = StandardScaler()
-X_continuas = X_final[variables_continuas]  # Seleccionamos las variables continuas
-X_continuas_scaled = scaler.fit_transform(X_continuas)  # Escalamos
-
-# Reemplazamos las variables continuas escaladas
-X_final[variables_continuas] = X_continuas_scaled
-print(X_final)
 
 
 # Paso 5: Dividir los datos en conjuntos de entrenamiento y prueba
-X_train, X_test, Y_train, Y_test = train_test_split(X_final, Y, test_size=0.2, random_state=42)
+X_train, X_test, Y_train, Y_test = train_test_split(X_new, Y, test_size=0.2, random_state=42)
 
-# Paso 6: Entrenar el modelo con KNNClassifier
+# Paso 6: Entrenar el modelo con Random Forest Classifier
 # Inicializa y entrena el modelo de KNN
 knn = KNeighborsClassifier(n_neighbors=5)  # Ajusta el valor de k
 knn.fit(X_train, Y_train)
