@@ -94,8 +94,8 @@ else:
     print("No se pudieron dividir los datos.")
     
     
-    # Seleccionar las mejores características
-selector = SelectKBest(score_func=f_classif, k=7)
+# Seleccionar las mejores características
+selector = SelectKBest(score_func=f_classif, k=6)
 X_new = selector.fit_transform(X, Y)
 selected_features = X.columns[selector.get_support()]
 print(selected_features)
@@ -107,33 +107,10 @@ print(X_new)
  # 1. Dividir los datos en train y test (80% entrenamiento, 20% prueba)
 X_train, X_test, Y_train, Y_test = train_test_split(X_new, Y, test_size=0.2, random_state=42)
 
-# 2. Inicializar el modelo de RandomForestClassifier
-modelo = RandomForestClassifier(random_state=42)
-
-# 3. Entrenar el modelo con el conjunto de entrenamiento
-modelo.fit(X_train, Y_train)
-
-# 4. Predecir los valores en el conjunto de prueba
-Y_pred = modelo.predict(X_test)
-
-# 5. Calcular la precisión del modelo en el conjunto de prueba
-precision = accuracy_score(Y_test, Y_pred)
-print(f"Precisión en el conjunto de prueba: {precision:.4f}")
-
-# 6. Realizar validación cruzada con 5 particiones
-# Esto realiza validación cruzada sobre el conjunto de entrenamiento para obtener una medida más robusta del rendimiento del modelo
-cv_scores = cross_val_score(modelo, X_train, Y_train, cv=5)
-
-# Mostrar los resultados de la validación cruzada
-print(f"Precisión promedio en validación cruzada: {cv_scores.mean():.4f}")
-print(f"Desviación estándar de la validación cruzada: {cv_scores.std():.4f}")
 
 
 
 #----------------CATBOOST
-
-# Identificar las columnas categóricas (opcional si CatBoost las detecta automáticamente)
-categorical_features = ['region', 'marital', 'gender', 'reside']
 
 # Crear y entrenar el modelo CatBoost
 model = CatBoostClassifier(iterations=100,         # Número de iteraciones (árboles)
@@ -153,7 +130,7 @@ print(f"Precisión en el conjunto de prueba: {precision:.4f}")
 
 # 6. Realizar validación cruzada con 5 particiones
 # Esto realiza validación cruzada sobre el conjunto de entrenamiento para obtener una medida más robusta del rendimiento del modelo
-cv_scores = cross_val_score(modelo, X_train, Y_train, cv=5)
+cv_scores = cross_val_score(model, X_train, Y_train, cv=5)
 
 # Mostrar los resultados de la validación cruzada
 print(f"Precisión promedio en validación cruzada: {cv_scores.mean():.4f}")
